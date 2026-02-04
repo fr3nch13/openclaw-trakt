@@ -201,6 +201,56 @@ class TraktClient:
         params = {"query": query}
         result = self._request("GET", endpoint, params=params)
         return result if result else []
+    
+    def add_to_history(self, items: Dict) -> bool:
+        """Add items to watch history
+        
+        Args:
+            items: Dict with 'movies' or 'shows' or 'episodes' arrays
+                   Format: {"shows": [{"ids": {"trakt": 123}}], "watched_at": "2026-02-04T00:00:00.000Z"}
+        
+        Returns:
+            True if successful
+        """
+        endpoint = "/sync/history"
+        result = self._request("POST", endpoint, json=items)
+        return result is not None
+    
+    def mark_show_watched(self, trakt_id: int) -> bool:
+        """Mark an entire show as watched
+        
+        Args:
+            trakt_id: Trakt ID of the show
+        """
+        payload = {
+            "shows": [
+                {"ids": {"trakt": trakt_id}}
+            ]
+        }
+        return self.add_to_history(payload)
+    
+    def mark_episode_watched(self, show_trakt_id: int, season: int, episode: int) -> bool:
+        """Mark a specific episode as watched
+        
+        Args:
+            show_trakt_id: Trakt ID of the show
+            season: Season number
+            episode: Episode number
+        """
+        payload = {
+            "shows": [
+                {
+                    "ids": {"trakt": show_trakt_id},
+                    "seasons": [
+                        {
+                            "number": season,
+                            "episodes": [{"number": episode}]
+                        }
+                    ]
+                }
+            ]
+        }
+        return self.add_to_history(payload)
 
 
 def main():
@@ -211,12 +261,13 @@ def main():
     
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  trakt_client.py auth <pin>      # Authenticate with PIN")
-        print("  trakt_client.py history         # Get watch history")
-        print("  trakt_client.py watchlist       # Get watchlist")
-        print("  trakt_client.py recommend       # Get recommendations")
-        print("  trakt_client.py trending        # Get trending")
-        print("  trakt_client.py search <query>  # Search")
+        print("  trakt_client.py auth <device_code>      # Authenticate")
+        print("  trakt_client.py history                 # Get watch history")
+        print("  trakt_client.py watchlist               # Get watchlist")
+        print("  trakt_client.py recommend               # Get recommendations")
+        print("  trakt_client.py trending                # Get trending")
+        print("  trakt_client.py search <query>          # Search")
+        print("  trakt_client.py mark-watched <trakt_id> # Mark show as watched")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -262,6 +313,16 @@ def main():
         query = " ".join(sys.argv[2:])
         results = client.search(query)
         print(json.dumps(results, indent=2))
+    
+    elif command == "mark-watched":
+        if len(sys.argv) < 3:
+            print("Usage: trakt_client.py mark-watched <trakt_id>")
+            sys.exit(1)
+        trakt_id = int(sys.argv[2])
+        if client.mark_show_watched(trakt_id):
+            print("✓ Marked as watched!")
+        else:
+            print("✗ Failed to mark as watched")
     
     else:
         print(f"Unknown command: {command}")
