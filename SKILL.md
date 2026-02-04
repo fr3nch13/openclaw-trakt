@@ -7,6 +7,34 @@ description: Track and recommend TV shows and movies using Trakt.tv. Use when th
 
 Integrate with Trakt.tv to track watch history and provide personalized show/movie recommendations.
 
+**📚 Trakt API Documentation:** <https://trakt.docs.apiary.io/>
+
+## First-Time Setup Required
+
+**Before using this skill, run the interactive setup:**
+
+### Automated Setup (Recommended)
+```bash
+python3 scripts/setup.py
+```
+
+This will guide you through:
+1. Installing dependencies
+2. Creating a Trakt application
+3. Configuring credentials
+4. Authenticating with PIN
+5. Testing the integration
+
+### Manual Setup
+If automated setup doesn't work, follow the manual steps in the Setup section below.
+
+### Interactive Setup for OpenClaw
+When a user asks to "install Trakt" or "set up Trakt integration," OpenClaw should:
+1. Read `INSTALL.md` for detailed interactive flow
+2. Or run `python3 scripts/setup.py` and guide user through prompts
+
+---
+
 ## Features
 
 - Track watch history (automatically synced by Trakt from streaming services)
@@ -35,17 +63,15 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
 
 2. **Trakt.tv account** with Pro subscription (required for automatic watch tracking)
 
-3. **Trakt API application** - Create at https://trakt.tv/oauth/applications
+3. **Trakt API application** - Create at <https://trakt.tv/oauth/applications>
 
-4. **Environment variables:**
-   - `TRAKT_CLIENT_ID` - Your application's client ID
-   - `TRAKT_CLIENT_SECRET` - Your application's client secret
+4. **Configuration file:** `~/.openclaw/trakt_config.json` (see setup below)
 
 ## Setup
 
 ### 1. Create Trakt Application
 
-1. Visit https://trakt.tv/oauth/applications
+1. Visit <https://trakt.tv/oauth/applications>
 2. Click "New Application"
 3. Fill in the form:
    - Name: "OpenClaw Assistant"
@@ -54,14 +80,22 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
    - Permissions: Check all that apply
 4. Save and note your Client ID and Client Secret
 
-### 2. Set Environment Variables
+### 2. Create Configuration File
 
-```bash
-export TRAKT_CLIENT_ID="your_client_id_here"
-export TRAKT_CLIENT_SECRET="your_client_secret_here"
+Create `~/.openclaw/trakt_config.json` with your credentials:
+
+```json
+{
+  "client_id": "YOUR_CLIENT_ID_HERE",
+  "client_secret": "YOUR_CLIENT_SECRET_HERE",
+  "access_token": "",
+  "refresh_token": ""
+}
 ```
 
-Or add to your shell profile (~/.zshrc, ~/.bashrc, etc.)
+Replace `YOUR_CLIENT_ID_HERE` and `YOUR_CLIENT_SECRET_HERE` with your actual values from step 1.
+
+**Note:** Leave `access_token` and `refresh_token` empty - they'll be filled automatically after authentication.
 
 ### 3. Authenticate
 
@@ -77,7 +111,7 @@ This will output a PIN URL. Visit it, authorize the app, and run:
 python3 scripts/trakt_client.py auth <PIN>
 ```
 
-Authentication tokens are saved to `~/.openclaw/trakt_auth.json`
+Authentication tokens are saved to `~/.openclaw/trakt_config.json`
 
 ## Usage
 
@@ -167,12 +201,13 @@ See `references/api.md` for detailed Trakt API endpoint documentation.
 
 - Trakt Pro subscription required for automatic watch tracking from streaming services
 - Recommendations improve over time as watch history grows
-- API rate limits apply (check Trakt documentation)
+- API rate limits apply: 1000 requests per 5 minutes (authenticated)
+- Full API documentation: <https://trakt.docs.apiary.io/>
 
 ## Troubleshooting
 
 **"Authentication failed"**
-- Verify CLIENT_ID and CLIENT_SECRET are set correctly
+- Verify CLIENT_ID and CLIENT_SECRET are set correctly in `~/.openclaw/trakt_config.json`
 - Ensure PIN is copied accurately (case-sensitive)
 - Check that your Trakt application has proper permissions
 

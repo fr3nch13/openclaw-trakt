@@ -12,37 +12,50 @@ from typing import Optional, Dict, List, Any
 
 # Configuration
 TRAKT_API_BASE = "https://api.trakt.tv"
-CONFIG_FILE = Path.home() / ".openclaw" / "trakt_auth.json"
-CLIENT_ID_ENV = "TRAKT_CLIENT_ID"
-CLIENT_SECRET_ENV = "TRAKT_CLIENT_SECRET"
+CONFIG_FILE = Path.home() / ".openclaw" / "trakt_config.json"
 
 
 class TraktClient:
     """Trakt.tv API client with PIN authentication"""
     
     def __init__(self):
-        self.client_id = os.getenv(CLIENT_ID_ENV)
-        self.client_secret = os.getenv(CLIENT_SECRET_ENV)
+        self.client_id = None
+        self.client_secret = None
         self.access_token = None
         self.refresh_token = None
         
-        # Load saved auth if exists
+        # Load config from file (required)
         self.load_auth()
     
     def load_auth(self) -> bool:
-        """Load authentication from config file"""
-        if CONFIG_FILE.exists():
-            try:
-                with open(CONFIG_FILE, 'r') as f:
-                    auth_data = json.load(f)
-                    self.client_id = auth_data.get('client_id', self.client_id)
-                    self.client_secret = auth_data.get('client_secret', self.client_secret)
-                    self.access_token = auth_data.get('access_token')
-                    self.refresh_token = auth_data.get('refresh_token')
-                return True
-            except Exception as e:
-                print(f"Error loading auth: {e}")
-        return False
+        """Load configuration from config file"""
+        if not CONFIG_FILE.exists():
+            print(f"Config file not found: {CONFIG_FILE}")
+            print("Please create it with your Trakt credentials:")
+            print(json.dumps({
+                "client_id": "YOUR_CLIENT_ID",
+                "client_secret": "YOUR_CLIENT_SECRET",
+                "access_token": "",
+                "refresh_token": ""
+            }, indent=2))
+            return False
+        
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                self.client_id = config.get('client_id')
+                self.client_secret = config.get('client_secret')
+                self.access_token = config.get('access_token')
+                self.refresh_token = config.get('refresh_token')
+            
+            if not self.client_id or not self.client_secret:
+                print("Error: client_id and client_secret must be set in config file")
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            return False
     
     def save_auth(self):
         """Save authentication to config file"""
@@ -55,20 +68,36 @@ class TraktClient:
                 'refresh_token': self.refresh_token
             }, f, indent=2)
     
+    def get_device_code(self) -> Optional[Dict]:
+        """Generate device code for authentication"""
+        if not self.client_id:
+            raise ValueError("CLIENT_ID not set")
+        
+        url = f"{TRAKT_API_BASE}/oauth/device/code"
+        payload = {"client_id": self.client_id}
+        
+        response = requests.post(url, json=payload, headers=self._get_headers())
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to get device code: {response.status_code} - {response.text}")
+            return None
+    
     def get_pin_url(self) -> str:
         """Get the PIN authentication URL"""
         if not self.client_id:
             raise ValueError("CLIENT_ID not set")
         return f"https://trakt.tv/pin/{self.client_id}"
     
-    def authenticate_with_pin(self, pin: str) -> bool:
-        """Authenticate using PIN"""
+    def authenticate_with_device_code(self, device_code: str) -> bool:
+        """Authenticate using device code"""
         if not self.client_id or not self.client_secret:
             raise ValueError("CLIENT_ID and CLIENT_SECRET must be set")
         
         url = f"{TRAKT_API_BASE}/oauth/device/token"
         payload = {
-            "code": pin,
+            "code": device_code,
             "client_id": self.client_id,
             "client_secret": self.client_secret
         }
@@ -84,6 +113,10 @@ class TraktClient:
         else:
             print(f"Auth failed: {response.status_code} - {response.text}")
             return False
+    
+    def authenticate_with_pin(self, pin: str) -> bool:
+        """Authenticate using PIN (legacy method, use authenticate_with_device_code)"""
+        return self.authenticate_with_device_code(pin)
     
     def _get_headers(self, include_auth: bool = False) -> Dict[str, str]:
         """Get request headers"""
@@ -168,6 +201,56 @@ class TraktClient:
         params = {"query": query}
         result = self._request("GET", endpoint, params=params)
         return result if result else []
+    
+    def add_to_history(self, items: Dict) -> bool:
+        """Add items to watch history
+        
+        Args:
+            items: Dict with 'movies' or 'shows' or 'episodes' arrays
+                   Format: {"shows": [{"ids": {"trakt": 123}}], "watched_at": "2026-02-04T00:00:00.000Z"}
+        
+        Returns:
+            True if successful
+        """
+        endpoint = "/sync/history"
+        result = self._request("POST", endpoint, json=items)
+        return result is not None
+    
+    def mark_show_watched(self, trakt_id: int) -> bool:
+        """Mark an entire show as watched
+        
+        Args:
+            trakt_id: Trakt ID of the show
+        """
+        payload = {
+            "shows": [
+                {"ids": {"trakt": trakt_id}}
+            ]
+        }
+        return self.add_to_history(payload)
+    
+    def mark_episode_watched(self, show_trakt_id: int, season: int, episode: int) -> bool:
+        """Mark a specific episode as watched
+        
+        Args:
+            show_trakt_id: Trakt ID of the show
+            season: Season number
+            episode: Episode number
+        """
+        payload = {
+            "shows": [
+                {
+                    "ids": {"trakt": show_trakt_id},
+                    "seasons": [
+                        {
+                            "number": season,
+                            "episodes": [{"number": episode}]
+                        }
+                    ]
+                }
+            ]
+        }
+        return self.add_to_history(payload)
 
 
 def main():
@@ -178,24 +261,31 @@ def main():
     
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  trakt_client.py auth <pin>      # Authenticate with PIN")
-        print("  trakt_client.py history         # Get watch history")
-        print("  trakt_client.py watchlist       # Get watchlist")
-        print("  trakt_client.py recommend       # Get recommendations")
-        print("  trakt_client.py trending        # Get trending")
-        print("  trakt_client.py search <query>  # Search")
+        print("  trakt_client.py auth <device_code>      # Authenticate")
+        print("  trakt_client.py history                 # Get watch history")
+        print("  trakt_client.py watchlist               # Get watchlist")
+        print("  trakt_client.py recommend               # Get recommendations")
+        print("  trakt_client.py trending                # Get trending")
+        print("  trakt_client.py search <query>          # Search")
+        print("  trakt_client.py mark-watched <trakt_id> # Mark show as watched")
         sys.exit(1)
     
     command = sys.argv[1]
     
     if command == "auth":
         if len(sys.argv) < 3:
-            pin_url = client.get_pin_url()
-            print(f"Get your PIN at: {pin_url}")
-            print("Then run: trakt_client.py auth <PIN>")
+            # Generate device code
+            device_data = client.get_device_code()
+            if device_data:
+                print(f"Go to: https://trakt.tv/activate")
+                print(f"Enter this code: {device_data['user_code']}")
+                print(f"\nDevice code: {device_data['device_code']}")
+                print("Then run: trakt_client.py auth <DEVICE_CODE>")
+            else:
+                print("✗ Failed to generate device code")
         else:
-            pin = sys.argv[2]
-            if client.authenticate_with_pin(pin):
+            code = sys.argv[2]
+            if client.authenticate_with_device_code(code):
                 print("✓ Authentication successful!")
             else:
                 print("✗ Authentication failed")
@@ -223,6 +313,16 @@ def main():
         query = " ".join(sys.argv[2:])
         results = client.search(query)
         print(json.dumps(results, indent=2))
+    
+    elif command == "mark-watched":
+        if len(sys.argv) < 3:
+            print("Usage: trakt_client.py mark-watched <trakt_id>")
+            sys.exit(1)
+        trakt_id = int(sys.argv[2])
+        if client.mark_show_watched(trakt_id):
+            print("✓ Marked as watched!")
+        else:
+            print("✗ Failed to mark as watched")
     
     else:
         print(f"Unknown command: {command}")

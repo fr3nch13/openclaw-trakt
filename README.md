@@ -23,6 +23,26 @@ This OpenClaw skill integrates with [Trakt.tv](https://trakt.tv) to provide:
 
 ## Installation
 
+### Automated Setup (Easiest!)
+
+Run the interactive setup wizard:
+
+```bash
+cd ~/.openclaw/skills/openclaw-trakt
+python3 scripts/setup.py
+```
+
+This will guide you through the entire setup process automatically:
+- Install dependencies
+- Help you create a Trakt application
+- Configure credentials
+- Authenticate with PIN
+- Test the integration
+
+### Manual Setup
+
+If you prefer to configure manually, follow these steps:
+
 ### 1. Install Dependencies
 
 ```bash
@@ -36,21 +56,27 @@ pip install requests
 
 ### 2. Create Trakt Application
 
-1. Go to https://trakt.tv/oauth/applications
+1. Go to <https://trakt.tv/oauth/applications>
 2. Click "New Application"
 3. Fill in:
    - **Name:** OpenClaw Assistant
    - **Redirect URI:** `urn:ietf:wg:oauth:2.0:oob`
 4. Save and copy your **Client ID** and **Client Secret**
 
-### 3. Set Environment Variables
+### 3. Create Configuration File
 
-```bash
-export TRAKT_CLIENT_ID="your_client_id_here"
-export TRAKT_CLIENT_SECRET="your_client_secret_here"
+Create `~/.openclaw/trakt_config.json`:
+
+```json
+{
+  "client_id": "YOUR_CLIENT_ID_HERE",
+  "client_secret": "YOUR_CLIENT_SECRET_HERE",
+  "access_token": "",
+  "refresh_token": ""
+}
 ```
 
-Add to your shell profile (`~/.zshrc`, `~/.bashrc`) to persist.
+Replace the placeholder values with your actual Client ID and Secret. Leave `access_token` and `refresh_token` empty.
 
 ### 4. Authenticate
 
@@ -62,7 +88,7 @@ python3 scripts/trakt_client.py auth
 python3 scripts/trakt_client.py auth <YOUR_PIN>
 ```
 
-Authentication tokens are saved to `~/.openclaw/trakt_auth.json`
+Authentication tokens are saved to `~/.openclaw/trakt_config.json`
 
 ## Usage
 
@@ -133,7 +159,7 @@ pip3 install requests --break-system-packages
 ```
 
 ### "Authentication failed"
-- Double-check `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET`
+- Double-check your credentials in `~/.openclaw/trakt_config.json`
 - Ensure PIN is copied exactly (case-sensitive)
 - Verify your Trakt application has proper permissions
 
@@ -146,7 +172,7 @@ pip3 install requests --break-system-packages
 
 - **Auth Method:** PIN-based OAuth
 - **API Version:** Trakt API v2
-- **Storage:** `~/.openclaw/trakt_auth.json`
+- **Storage:** `~/.openclaw/trakt_config.json`
 - **Rate Limits:** 1000 requests per 5 minutes (authenticated)
 
 ## Links
