@@ -7,6 +7,32 @@ description: Track and recommend TV shows and movies using Trakt.tv. Use when th
 
 Integrate with Trakt.tv to track watch history and provide personalized show/movie recommendations.
 
+## First-Time Setup Required
+
+**Before using this skill, run the interactive setup:**
+
+### Automated Setup (Recommended)
+```bash
+python3 scripts/setup.py
+```
+
+This will guide you through:
+1. Installing dependencies
+2. Creating a Trakt application
+3. Configuring credentials
+4. Authenticating with PIN
+5. Testing the integration
+
+### Manual Setup
+If automated setup doesn't work, follow the manual steps in the Setup section below.
+
+### Interactive Setup for OpenClaw
+When a user asks to "install Trakt" or "set up Trakt integration," OpenClaw should:
+1. Read `INSTALL.md` for detailed interactive flow
+2. Or run `python3 scripts/setup.py` and guide user through prompts
+
+---
+
 ## Features
 
 - Track watch history (automatically synced by Trakt from streaming services)

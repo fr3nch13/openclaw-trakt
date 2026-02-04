@@ -23,6 +23,26 @@ This OpenClaw skill integrates with [Trakt.tv](https://trakt.tv) to provide:
 
 ## Installation
 
+### Automated Setup (Easiest!)
+
+Run the interactive setup wizard:
+
+```bash
+cd ~/.openclaw/skills/openclaw-trakt
+python3 scripts/setup.py
+```
+
+This will guide you through the entire setup process automatically:
+- Install dependencies
+- Help you create a Trakt application
+- Configure credentials
+- Authenticate with PIN
+- Test the integration
+
+### Manual Setup
+
+If you prefer to configure manually, follow these steps:
+
 ### 1. Install Dependencies
 
 ```bash
