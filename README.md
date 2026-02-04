@@ -36,7 +36,7 @@ pip install requests
 
 ### 2. Create Trakt Application
 
-1. Go to https://trakt.tv/oauth/applications
+1. Go to <https://trakt.tv/oauth/applications>
 2. Click "New Application"
 3. Fill in:
    - **Name:** OpenClaw Assistant

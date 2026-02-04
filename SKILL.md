@@ -35,7 +35,7 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
 
 2. **Trakt.tv account** with Pro subscription (required for automatic watch tracking)
 
-3. **Trakt API application** - Create at https://trakt.tv/oauth/applications
+3. **Trakt API application** - Create at <https://trakt.tv/oauth/applications>
 
 4. **Environment variables:**
    - `TRAKT_CLIENT_ID` - Your application's client ID
@@ -45,7 +45,7 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
 
 ### 1. Create Trakt Application
 
-1. Visit https://trakt.tv/oauth/applications
+1. Visit <https://trakt.tv/oauth/applications>
 2. Click "New Application"
 3. Fill in the form:
    - Name: "OpenClaw Assistant"
