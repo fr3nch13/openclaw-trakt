@@ -12,37 +12,50 @@ from typing import Optional, Dict, List, Any
 
 # Configuration
 TRAKT_API_BASE = "https://api.trakt.tv"
-CONFIG_FILE = Path.home() / ".openclaw" / "trakt_auth.json"
-CLIENT_ID_ENV = "TRAKT_CLIENT_ID"
-CLIENT_SECRET_ENV = "TRAKT_CLIENT_SECRET"
+CONFIG_FILE = Path.home() / ".openclaw" / "trakt_config.json"
 
 
 class TraktClient:
     """Trakt.tv API client with PIN authentication"""
     
     def __init__(self):
-        self.client_id = os.getenv(CLIENT_ID_ENV)
-        self.client_secret = os.getenv(CLIENT_SECRET_ENV)
+        self.client_id = None
+        self.client_secret = None
         self.access_token = None
         self.refresh_token = None
         
-        # Load saved auth if exists
+        # Load config from file (required)
         self.load_auth()
     
     def load_auth(self) -> bool:
-        """Load authentication from config file"""
-        if CONFIG_FILE.exists():
-            try:
-                with open(CONFIG_FILE, 'r') as f:
-                    auth_data = json.load(f)
-                    self.client_id = auth_data.get('client_id', self.client_id)
-                    self.client_secret = auth_data.get('client_secret', self.client_secret)
-                    self.access_token = auth_data.get('access_token')
-                    self.refresh_token = auth_data.get('refresh_token')
-                return True
-            except Exception as e:
-                print(f"Error loading auth: {e}")
-        return False
+        """Load configuration from config file"""
+        if not CONFIG_FILE.exists():
+            print(f"Config file not found: {CONFIG_FILE}")
+            print("Please create it with your Trakt credentials:")
+            print(json.dumps({
+                "client_id": "YOUR_CLIENT_ID",
+                "client_secret": "YOUR_CLIENT_SECRET",
+                "access_token": "",
+                "refresh_token": ""
+            }, indent=2))
+            return False
+        
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                self.client_id = config.get('client_id')
+                self.client_secret = config.get('client_secret')
+                self.access_token = config.get('access_token')
+                self.refresh_token = config.get('refresh_token')
+            
+            if not self.client_id or not self.client_secret:
+                print("Error: client_id and client_secret must be set in config file")
+                return False
+            
+            return True
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            return False
     
     def save_auth(self):
         """Save authentication to config file"""

@@ -37,9 +37,7 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
 
 3. **Trakt API application** - Create at <https://trakt.tv/oauth/applications>
 
-4. **Environment variables:**
-   - `TRAKT_CLIENT_ID` - Your application's client ID
-   - `TRAKT_CLIENT_SECRET` - Your application's client secret
+4. **Configuration file:** `~/.openclaw/trakt_config.json` (see setup below)
 
 ## Setup
 
@@ -54,14 +52,22 @@ Integrate with Trakt.tv to track watch history and provide personalized show/mov
    - Permissions: Check all that apply
 4. Save and note your Client ID and Client Secret
 
-### 2. Set Environment Variables
+### 2. Create Configuration File
 
-```bash
-export TRAKT_CLIENT_ID="your_client_id_here"
-export TRAKT_CLIENT_SECRET="your_client_secret_here"
+Create `~/.openclaw/trakt_config.json` with your credentials:
+
+```json
+{
+  "client_id": "YOUR_CLIENT_ID_HERE",
+  "client_secret": "YOUR_CLIENT_SECRET_HERE",
+  "access_token": "",
+  "refresh_token": ""
+}
 ```
 
-Or add to your shell profile (~/.zshrc, ~/.bashrc, etc.)
+Replace `YOUR_CLIENT_ID_HERE` and `YOUR_CLIENT_SECRET_HERE` with your actual values from step 1.
+
+**Note:** Leave `access_token` and `refresh_token` empty - they'll be filled automatically after authentication.
 
 ### 3. Authenticate
 
@@ -77,7 +83,7 @@ This will output a PIN URL. Visit it, authorize the app, and run:
 python3 scripts/trakt_client.py auth <PIN>
 ```
 
-Authentication tokens are saved to `~/.openclaw/trakt_auth.json`
+Authentication tokens are saved to `~/.openclaw/trakt_config.json`
 
 ## Usage
 
@@ -172,7 +178,7 @@ See `references/api.md` for detailed Trakt API endpoint documentation.
 ## Troubleshooting
 
 **"Authentication failed"**
-- Verify CLIENT_ID and CLIENT_SECRET are set correctly
+- Verify CLIENT_ID and CLIENT_SECRET are set correctly in `~/.openclaw/trakt_config.json`
 - Ensure PIN is copied accurately (case-sensitive)
 - Check that your Trakt application has proper permissions
 
