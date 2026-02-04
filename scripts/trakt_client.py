@@ -68,20 +68,36 @@ class TraktClient:
                 'refresh_token': self.refresh_token
             }, f, indent=2)
     
+    def get_device_code(self) -> Optional[Dict]:
+        """Generate device code for authentication"""
+        if not self.client_id:
+            raise ValueError("CLIENT_ID not set")
+        
+        url = f"{TRAKT_API_BASE}/oauth/device/code"
+        payload = {"client_id": self.client_id}
+        
+        response = requests.post(url, json=payload, headers=self._get_headers())
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to get device code: {response.status_code} - {response.text}")
+            return None
+    
     def get_pin_url(self) -> str:
         """Get the PIN authentication URL"""
         if not self.client_id:
             raise ValueError("CLIENT_ID not set")
         return f"https://trakt.tv/pin/{self.client_id}"
     
-    def authenticate_with_pin(self, pin: str) -> bool:
-        """Authenticate using PIN"""
+    def authenticate_with_device_code(self, device_code: str) -> bool:
+        """Authenticate using device code"""
         if not self.client_id or not self.client_secret:
             raise ValueError("CLIENT_ID and CLIENT_SECRET must be set")
         
         url = f"{TRAKT_API_BASE}/oauth/device/token"
         payload = {
-            "code": pin,
+            "code": device_code,
             "client_id": self.client_id,
             "client_secret": self.client_secret
         }
@@ -97,6 +113,10 @@ class TraktClient:
         else:
             print(f"Auth failed: {response.status_code} - {response.text}")
             return False
+    
+    def authenticate_with_pin(self, pin: str) -> bool:
+        """Authenticate using PIN (legacy method, use authenticate_with_device_code)"""
+        return self.authenticate_with_device_code(pin)
     
     def _get_headers(self, include_auth: bool = False) -> Dict[str, str]:
         """Get request headers"""
@@ -203,12 +223,18 @@ def main():
     
     if command == "auth":
         if len(sys.argv) < 3:
-            pin_url = client.get_pin_url()
-            print(f"Get your PIN at: {pin_url}")
-            print("Then run: trakt_client.py auth <PIN>")
+            # Generate device code
+            device_data = client.get_device_code()
+            if device_data:
+                print(f"Go to: https://trakt.tv/activate")
+                print(f"Enter this code: {device_data['user_code']}")
+                print(f"\nDevice code: {device_data['device_code']}")
+                print("Then run: trakt_client.py auth <DEVICE_CODE>")
+            else:
+                print("✗ Failed to generate device code")
         else:
-            pin = sys.argv[2]
-            if client.authenticate_with_pin(pin):
+            code = sys.argv[2]
+            if client.authenticate_with_device_code(code):
                 print("✓ Authentication successful!")
             else:
                 print("✗ Authentication failed")
