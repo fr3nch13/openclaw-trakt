@@ -7,6 +7,8 @@ description: Track and recommend TV shows and movies using Trakt.tv. Use when th
 
 Integrate with Trakt.tv to track watch history and provide personalized show/movie recommendations.
 
+**📚 Trakt API Documentation:** <https://trakt.docs.apiary.io/>
+
 ## First-Time Setup Required
 
 **Before using this skill, run the interactive setup:**
@@ -199,7 +201,8 @@ See `references/api.md` for detailed Trakt API endpoint documentation.
 
 - Trakt Pro subscription required for automatic watch tracking from streaming services
 - Recommendations improve over time as watch history grows
-- API rate limits apply (check Trakt documentation)
+- API rate limits apply: 1000 requests per 5 minutes (authenticated)
+- Full API documentation: <https://trakt.docs.apiary.io/>
 
 ## Troubleshooting
 
