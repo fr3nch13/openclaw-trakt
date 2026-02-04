@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""
+Trakt API client for OpenClaw
+Handles authentication and API requests to Trakt.tv
+"""
+
+import os
+import json
+import requests
+from pathlib import Path
+from typing import Optional, Dict, List, Any
+
+# Configuration
+TRAKT_API_BASE = "https://api.trakt.tv"
+CONFIG_FILE = Path.home() / ".openclaw" / "trakt_auth.json"
+CLIENT_ID_ENV = "TRAKT_CLIENT_ID"
+CLIENT_SECRET_ENV = "TRAKT_CLIENT_SECRET"
+
+
+class TraktClient:
+    """Trakt.tv API client with PIN authentication"""
+    
+    def __init__(self):
+        self.client_id = os.getenv(CLIENT_ID_ENV)
+        self.client_secret = os.getenv(CLIENT_SECRET_ENV)
+        self.access_token = None
+        self.refresh_token = None
+        
+        # Load saved auth if exists
+        self.load_auth()
+    
+    def load_auth(self) -> bool:
+        """Load authentication from config file"""
+        if CONFIG_FILE.exists():
+            try:
+                with open(CONFIG_FILE, 'r') as f:
+                    auth_data = json.load(f)
+                    self.client_id = auth_data.get('client_id', self.client_id)
+                    self.client_secret = auth_data.get('client_secret', self.client_secret)
+                    self.access_token = auth_data.get('access_token')
+                    self.refresh_token = auth_data.get('refresh_token')
+                return True
+            except Exception as e:
+                print(f"Error loading auth: {e}")
+        return False
+    
+    def save_auth(self):
+        """Save authentication to config file"""
+        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump({
+                'client_id': self.client_id,
+                'client_secret': self.client_secret,
+                'access_token': self.access_token,
+                'refresh_token': self.refresh_token
+            }, f, indent=2)
+    
+    def get_pin_url(self) -> str:
+        """Get the PIN authentication URL"""
+        if not self.client_id:
+            raise ValueError("CLIENT_ID not set")
+        return f"https://trakt.tv/pin/{self.client_id}"
+    
+    def authenticate_with_pin(self, pin: str) -> bool:
+        """Authenticate using PIN"""
+        if not self.client_id or not self.client_secret:
+            raise ValueError("CLIENT_ID and CLIENT_SECRET must be set")
+        
+        url = f"{TRAKT_API_BASE}/oauth/device/token"
+        payload = {
+            "code": pin,
+            "client_id": self.client_id,
+            "client_secret": self.client_secret
+        }
+        
+        response = requests.post(url, json=payload, headers=self._get_headers())
+        
+        if response.status_code == 200:
+            data = response.json()
+            self.access_token = data['access_token']
+            self.refresh_token = data['refresh_token']
+            self.save_auth()
+            return True
+        else:
+            print(f"Auth failed: {response.status_code} - {response.text}")
+            return False
+    
+    def _get_headers(self, include_auth: bool = False) -> Dict[str, str]:
+        """Get request headers"""
+        headers = {
+            "Content-Type": "application/json",
+            "trakt-api-version": "2",
+            "trakt-api-key": self.client_id
+        }
+        if include_auth and self.access_token:
+            headers["Authorization"] = f"Bearer {self.access_token}"
+        return headers
+    
+    def _request(self, method: str, endpoint: str, **kwargs) -> Optional[Dict]:
+        """Make an authenticated API request"""
+        url = f"{TRAKT_API_BASE}{endpoint}"
+        headers = self._get_headers(include_auth=True)
+        
+        response = requests.request(method, url, headers=headers, **kwargs)
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return response.json() if response.text else {}
+        elif response.status_code == 204:
+            return {}
+        else:
+            print(f"Request failed: {response.status_code} - {response.text}")
+            return None
+    
+    def get_watch_history(self, media_type: str = "shows", limit: int = 10) -> List[Dict]:
+        """Get user's watch history
+        
+        Args:
+            media_type: 'shows', 'movies', or 'episodes'
+            limit: Number of items to return
+        """
+        endpoint = f"/sync/history/{media_type}"
+        params = {"limit": limit}
+        result = self._request("GET", endpoint, params=params)
+        return result if result else []
+    
+    def get_watchlist(self, media_type: str = "shows") -> List[Dict]:
+        """Get user's watchlist
+        
+        Args:
+            media_type: 'shows' or 'movies'
+        """
+        endpoint = f"/sync/watchlist/{media_type}"
+        result = self._request("GET", endpoint)
+        return result if result else []
+    
+    def get_recommendations(self, media_type: str = "shows", limit: int = 10) -> List[Dict]:
+        """Get personalized recommendations
+        
+        Args:
+            media_type: 'shows' or 'movies'
+            limit: Number of recommendations
+        """
+        endpoint = f"/recommendations/{media_type}"
+        params = {"limit": limit}
+        result = self._request("GET", endpoint, params=params)
+        return result if result else []
+    
+    def get_trending(self, media_type: str = "shows", limit: int = 10) -> List[Dict]:
+        """Get trending content
+        
+        Args:
+            media_type: 'shows' or 'movies'
+            limit: Number of items
+        """
+        endpoint = f"/{media_type}/trending"
+        params = {"limit": limit}
+        result = self._request("GET", endpoint, params=params)
+        return result if result else []
+    
+    def search(self, query: str, media_type: str = "show,movie") -> List[Dict]:
+        """Search for shows and movies
+        
+        Args:
+            query: Search query
+            media_type: Comma-separated list: 'show', 'movie', 'person', etc.
+        """
+        endpoint = "/search/" + media_type
+        params = {"query": query}
+        result = self._request("GET", endpoint, params=params)
+        return result if result else []
+
+
+def main():
+    """CLI for testing the Trakt client"""
+    import sys
+    
+    client = TraktClient()
+    
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  trakt_client.py auth <pin>      # Authenticate with PIN")
+        print("  trakt_client.py history         # Get watch history")
+        print("  trakt_client.py watchlist       # Get watchlist")
+        print("  trakt_client.py recommend       # Get recommendations")
+        print("  trakt_client.py trending        # Get trending")
+        print("  trakt_client.py search <query>  # Search")
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    
+    if command == "auth":
+        if len(sys.argv) < 3:
+            pin_url = client.get_pin_url()
+            print(f"Get your PIN at: {pin_url}")
+            print("Then run: trakt_client.py auth <PIN>")
+        else:
+            pin = sys.argv[2]
+            if client.authenticate_with_pin(pin):
+                print("✓ Authentication successful!")
+            else:
+                print("✗ Authentication failed")
+    
+    elif command == "history":
+        history = client.get_watch_history(limit=5)
+        print(json.dumps(history, indent=2))
+    
+    elif command == "watchlist":
+        watchlist = client.get_watchlist()
+        print(json.dumps(watchlist, indent=2))
+    
+    elif command == "recommend":
+        recs = client.get_recommendations(limit=5)
+        print(json.dumps(recs, indent=2))
+    
+    elif command == "trending":
+        trending = client.get_trending(limit=5)
+        print(json.dumps(trending, indent=2))
+    
+    elif command == "search":
+        if len(sys.argv) < 3:
+            print("Usage: trakt_client.py search <query>")
+            sys.exit(1)
+        query = " ".join(sys.argv[2:])
+        results = client.search(query)
+        print(json.dumps(results, indent=2))
+    
+    else:
+        print(f"Unknown command: {command}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
