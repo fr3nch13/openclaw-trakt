@@ -166,6 +166,20 @@ class TraktClient:
         result = self._request("GET", endpoint)
         return result if result else []
     
+    def add_to_watchlist(self, items: Dict) -> bool:
+        """Add items to watchlist
+        
+        Args:
+            items: Dict with 'movies' or 'shows' arrays
+                   Format: {"shows": [{"ids": {"trakt": 123}}]}
+        
+        Returns:
+            True if successful
+        """
+        endpoint = "/sync/watchlist"
+        result = self._request("POST", endpoint, json=items)
+        return result is not None
+    
     def get_recommendations(self, media_type: str = "shows", limit: int = 10) -> List[Dict]:
         """Get personalized recommendations
         
